@@ -1,0 +1,161 @@
+@import 'tailwindcss';
+
+/**
+ * SupplySaathi design tokens.
+ *
+ * A procurement operations workspace, not an AI dashboard: warm paper ground,
+ * dark ink, forest green for action, and a strict semantic colour split between
+ * matched / unresolved / incompatible. Numbers are monospaced everywhere so
+ * quantities and prices line up down a column and can be compared by eye.
+ *
+ * Contrast: every ink colour below was measured against the paper background.
+ * The brief's #697166 secondary and #B77924 warning came in at 4.55:1 and
+ * 3.28:1 — the latter fails AA for text — so each has a darkened "ink" variant
+ * used for type, while the original stays for fills, borders and icons.
+ */
+
+@theme {
+  --color-paper: #f5f3ec;
+  --color-surface: #fffefa;
+  --color-surface-sunk: #efece2;
+
+  --color-ink: #202820;
+  --color-ink-soft: #5c6459;      /* 5.53:1 on paper (brief's #697166 was 4.55) */
+  --color-ink-faint: #8a9086;
+
+  --color-primary: #285943;        /* 7.27:1 */
+  --color-primary-hover: #1e4633;
+  --color-primary-wash: #e6ece7;
+
+  --color-accent: #d8eb83;
+  --color-accent-deep: #c3d968;
+
+  --color-warning: #b77924;        /* fills and borders only */
+  --color-warning-ink: #8a5713;    /* 5.48:1 — use for text */
+  --color-warning-wash: #f8efdd;
+
+  --color-danger: #b54b42;
+  --color-danger-ink: #9e3f37;     /* 5.87:1 */
+  --color-danger-wash: #f8e7e4;
+
+  --color-line: #dde0d5;
+  --color-line-strong: #c6cbba;
+
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-serif: 'Fraunces', 'Iowan Old Style', Georgia, serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, monospace;
+}
+
+@layer base {
+  html {
+    background: var(--color-paper);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'ss01';
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Tabular figures everywhere a number is compared against another number. */
+  .num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum';
+    letter-spacing: -0.01em;
+  }
+
+  .display {
+    font-family: var(--font-serif);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+  }
+
+  /* A visible, high-contrast focus ring — this app is operated by keyboard in
+     a warehouse office as often as by mouse. */
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+
+  ::selection {
+    background: var(--color-accent);
+    color: var(--color-ink);
+  }
+}
+
+@layer utilities {
+  .paper-edge {
+    box-shadow:
+      0 1px 2px rgb(32 40 32 / 0.04),
+      0 1px 0 rgb(255 255 255 / 0.8) inset;
+  }
+
+  .lift {
+    box-shadow:
+      0 1px 2px rgb(32 40 32 / 0.05),
+      0 4px 12px -4px rgb(32 40 32 / 0.08);
+  }
+
+  /* Hairline rule used to separate rows in dense numeric tables. */
+  .rule {
+    border-bottom: 1px solid var(--color-line);
+  }
+}
+
+/* Newly arrived results and state changes animate in, so the eye is drawn to
+   what actually changed during a live run rather than re-reading the list. */
+@keyframes arrive {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.animate-arrive {
+  animation: arrive 320ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 1.8s ease-in-out infinite;
+}
+
+/* Motion is decoration here; the information is in the text. Honour the
+   system preference rather than overriding it. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Thin, unobtrusive scrollbars in the timeline and drawer panes. */
+@supports (scrollbar-width: thin) {
+  .scroll-slim {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-line-strong) transparent;
+  }
+}
