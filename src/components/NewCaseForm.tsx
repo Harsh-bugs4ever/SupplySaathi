@@ -1,9 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
+import { apiUrl } from '@/lib/client/api';
 import { useRouter } from 'next/navigation';
 import { Banner, Button, Card, Spinner } from './ui';
-import { GhostMark } from './Logo';
+import { SourcingScene } from './SourcingScene';
 
 /**
  * Case creation.
@@ -32,6 +34,7 @@ export function NewCaseForm({
   timezone: string;
 }) {
   const router = useRouter();
+  const [mode, setMode] = useState<'demo' | 'live'>(defaultMode);
 
   const [briefText, setBriefText] = useState('');
   const [showDetails, setShowDetails] = useState(false);
@@ -57,6 +60,7 @@ export function NewCaseForm({
 
   async function submit() {
     setError(null);
+    if (submitting) return;
     if (briefText.trim().length < 10) {
       setError('Describe what you need — a sentence or two is enough.');
       return;
@@ -64,16 +68,17 @@ export function NewCaseForm({
 
     setSubmitting(true);
     try {
-      const res = await fetch('/api/cases', {
+      const res = await fetch(apiUrl('/api/cases'), {
+        credentials: 'include',
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           briefText,
           originalProductUrl: originalUrl.trim() || null,
-          mode: defaultMode,
+          mode,
           structured: {
             quantity: quantity ? Number(quantity) : null,
-            partialOk,
+            partialOk: showDetails ? partialOk : undefined,
             dimensions:
               dims.l && dims.w && dims.h
                 ? {
@@ -84,12 +89,12 @@ export function NewCaseForm({
                     surface: dims.surface as 'external' | 'internal' | 'unspecified',
                   }
                 : null,
-            foodContactRequired: foodContact,
+            foodContactRequired: showDetails ? foodContact : undefined,
             city: city.trim() || null,
             postalCode: postalCode.trim() || null,
             deadlineText: deadline.trim() || null,
             budgetAmount: budget ? Number(budget) : null,
-            currency,
+            currency: budget ? currency : undefined,
             softenedKinds: softened,
             preferences: preferences
               .split('\n')
@@ -113,25 +118,11 @@ export function NewCaseForm({
   }
 
   return (
-    <div className="mx-auto max-w-[820px] px-5 py-10 sm:px-8 lg:py-16">
-      <header className="mb-9">
-        <div className="mb-5 flex items-center gap-3">
-          <GhostMark size={44} className="text-primary" animated />
-          <span className="rounded-full border border-line bg-surface px-2.5 py-1 text-[11px] uppercase tracking-[0.1em] text-ink-soft">
-            Sourcing rescue
-          </span>
-        </div>
-
-        <h1 className="display text-[34px] text-ink sm:text-[44px]">
-          Find a replacement.
-          <br />
-          Keep the order moving.
-        </h1>
-        <p className="mt-4 max-w-[52ch] text-[15px] leading-relaxed text-ink-soft">
-          Describe what you need. SupplySaathi reads live supplier pages, rejects what does not fit,
-          shows you the tradeoffs with evidence, and prepares quote requests for your approval.
-        </p>
-      </header>
+    <div className="rescue-page mx-auto max-w-[1240px] px-5 py-8 sm:px-8 lg:px-12 lg:py-10">
+      <div className="workspace-topline"><span>SOURCING WORKSPACE <span className="topline-slash">/</span> NEW CASE</span><Link href="/settings">Connections <span aria-hidden="true">↗</span></Link></div>
+      <header className="command-heading"><div><p className="eyebrow">LESS SEARCHING. MORE CERTAINTY.</p><h1>Your next supplier.<br /><span>One smart move away.</span></h1></div><p>Turn a supply setback into a shortlist.<br />Real pages. Clear evidence. Your decision.</p></header>
+      <div className="rescue-grid">
+      <section aria-label="Create a sourcing case">
 
       {error && (
         <div className="mb-5">
@@ -139,12 +130,16 @@ export function NewCaseForm({
         </div>
       )}
 
-      <Card className="p-5 sm:p-6">
+      <Card className="brief-panel p-5 sm:p-7">
+        <div className="composer-heading"><div><span className="eyebrow">01 / THE BRIEF</span><h2>What are we sourcing?</h2></div><span className="composer-symbol" aria-hidden="true">✳</span></div>
+        <div className="mode-switch" role="group" aria-label="Research mode"><button type="button" aria-pressed={mode === 'live'} onClick={() => setMode('live')}><span className="mode-light" />Live research</button><button type="button" aria-pressed={mode === 'demo'} onClick={() => setMode('demo')}>Try demo</button></div>
+        <p className="mode-description" aria-live="polite">{mode === 'live' ? 'Real supplier pages. Keyless retrieval available; discovery depends on connected search providers.' : 'Sample suppliers only. No real supplier research or email sending.'}</p>
         <label htmlFor="brief" className={label}>
           What do you need?
         </label>
         <textarea
           id="brief"
+          maxLength={4000}
           value={briefText}
           onChange={(e) => setBriefText(e.target.value)}
           rows={5}
@@ -157,7 +152,7 @@ export function NewCaseForm({
             onClick={() => setBriefText(DEMO_BRIEF)}
             className="rounded-full border border-line bg-paper px-3 py-1 text-[12px] text-ink-soft transition hover:border-line-strong hover:text-ink"
           >
-            Use the example brief
+            Try: 500 cake boxes
           </button>
           <span className="text-[12px] text-ink-faint">
             Dates are resolved in {timezone} and shown to you before research starts.
@@ -170,6 +165,7 @@ export function NewCaseForm({
           </label>
           <input
             id="url"
+            type="url"
             value={originalUrl}
             onChange={(e) => setOriginalUrl(e.target.value)}
             placeholder="https://your-old-supplier.com/product/cake-box"
@@ -409,7 +405,7 @@ export function NewCaseForm({
               </>
             ) : (
               <>
-                Start the rescue
+                {mode === 'live' ? 'Create live sourcing case' : 'Create demo case'}
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
                   <path
                     d="M3 8h10M9 4l4 4-4 4"
@@ -427,6 +423,12 @@ export function NewCaseForm({
           </p>
         </div>
       </Card>
+      </section>
+      <aside className="rescue-aside">
+        <SourcingScene />
+        <div className="assurance-panel"><span className="eyebrow">BUILT FOR THE DETAILS</span><h2>A shortlist you can<br />actually act on.</h2><div className="assurance-row"><span>↗</span><div><h3>Every fact has a source</h3><p>Inspect the original supplier evidence.</p></div></div><div className="assurance-row"><span>≋</span><div><h3>Compare the real tradeoffs</h3><p>Pack sizes, minimum orders, and open questions.</p></div></div><div className="assurance-row"><span>✓</span><div><h3>You approve the next step</h3><p>Review every quote request before sending.</p></div></div><Link href="/settings" className="connection-link">Manage live connections <span>↗</span></Link></div>
+      </aside>
+      </div>
     </div>
   );
 }

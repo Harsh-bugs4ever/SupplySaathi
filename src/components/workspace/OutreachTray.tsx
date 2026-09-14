@@ -25,7 +25,7 @@ const STATUS_META: Record<
   sending: { label: 'Sending…', cls: 'bg-primary-wash text-primary' },
   accepted_by_provider: {
     label: 'Accepted by email provider',
-    cls: 'bg-primary text-white',
+    cls: 'bg-primary text-paper',
     note: 'The provider accepted this message. That is not confirmation it reached the inbox.',
   },
   failed: { label: 'Failed', cls: 'bg-danger-wash text-danger-ink' },

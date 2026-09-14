@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Banner, Button, Card, SectionHeading, Spinner } from './ui';
 import { GhostEmpty } from './Logo';
+import { api, apiUrl } from '@/lib/client/api';
 import type { BusinessProfile, SupplierNote } from '@/lib/domain/types';
 
 /**
@@ -18,55 +19,105 @@ const input =
   'w-full rounded-lg border border-line bg-surface px-3 py-2 text-[14px] focus:border-primary focus:outline-none';
 const label = 'mb-1.5 block text-[12px] font-medium text-ink-soft';
 
-export function ProfileEditor({
-  initialProfile,
-  initialNotes,
-  cogneeConfigured,
-  memoryUnavailable,
-}: {
-  initialProfile: BusinessProfile;
-  initialNotes: SupplierNote[];
-  cogneeConfigured: boolean;
-  memoryUnavailable: boolean;
-}) {
-  const [profile, setProfile] = useState(initialProfile);
-  const [notes, setNotes] = useState(initialNotes);
+export function ProfileEditor() {
+  const [profile, setProfile] = useState<BusinessProfile | null>(null);
+  const [notes, setNotes] = useState<SupplierNote[]>([]);
+  const [cogneeConfigured, setCogneeConfigured] = useState(false);
+  const [memoryUnavailable, setMemoryUnavailable] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
   const [newNote, setNewNote] = useState('');
   const [newKind, setNewKind] = useState<SupplierNote['kind']>('preference');
 
-  async function saveProfile() {
-    setSaving(true);
-    const res = await fetch('/api/profile', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(profile),
-    });
-    const data = await res.json();
-    setNotice(res.ok ? 'Saved.' : (data.error ?? 'Could not save.'));
-    setSaving(false);
-  }
+  const [noticeError, setNoticeError] = useState(false);
 
-  async function addNote() {
-    if (newNote.trim().length < 3) return;
-    const res = await fetch('/api/memory', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: newNote.trim(), kind: newKind }),
-    });
-    const data = await res.json();
-    if (res.ok) {
-      setNotes(data.notes);
-      setNewNote('');
-      setNotice('Remembered. It will be offered on your next case.');
+  // Profile and memory are two endpoints, loaded together so the page renders
+  // once rather than shifting as each arrives.
+  useEffect(() => {
+    let active = true;
+    Promise.all([
+      api<{ profile: BusinessProfile }>('/api/profile'),
+      api<{ notes: SupplierNote[]; remoteUnavailable: boolean; cogneeConfigured: boolean }>(
+        '/api/memory',
+      ),
+    ])
+      .then(([p, m]) => {
+        if (!active) return;
+        setProfile(p.profile);
+        setNotes(m.notes);
+        setCogneeConfigured(m.cogneeConfigured);
+        setMemoryUnavailable(m.remoteUnavailable);
+      })
+      .catch((e) => active && setLoadError((e as Error).message));
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  async function request(path: string, method: string, body?: unknown) {
+    setNoticeError(false);
+    try {
+      const res = await fetch(apiUrl(path), {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: body === undefined ? undefined : JSON.stringify(body),
+        credentials: 'include',
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Could not save changes.');
+      return data;
+    } catch (error) {
+      setNoticeError(true);
+      setNotice(error instanceof Error ? error.message : 'Connection interrupted. Please try again.');
+      return null;
     }
   }
 
+  async function saveProfile() {
+    setSaving(true);
+    try {
+      if (profile && (await request('/api/profile', 'PATCH', profile))) setNotice('Saved.');
+    } finally { setSaving(false); }
+  }
+
+  async function addNote() {
+    if (newNote.trim().length < 3 || saving) return;
+    setSaving(true);
+    try {
+      const data = await request('/api/memory', 'POST', { text: newNote.trim(), kind: newKind });
+      if (data) {
+        setNotes(data.notes);
+        setNewNote('');
+        setNotice('Remembered. It will be offered on your next case.');
+      }
+    } finally { setSaving(false); }
+  }
+
   async function removeNote(id: string) {
-    const res = await fetch(`/api/memory?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
-    if (res.ok) setNotes((await res.json()).notes);
+    const data = await request(`/api/memory?id=${encodeURIComponent(id)}`, 'DELETE');
+    if (data) { setNotes(data.notes); setNotice('Note removed.'); }
+  }
+
+  if (loadError) {
+    return (
+      <div className="mx-auto max-w-[760px] px-5 py-10 sm:px-8">
+        <Banner tone="danger">{loadError}</Banner>
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="mx-auto max-w-[760px] px-5 py-10 sm:px-8">
+        <Card className="p-6">
+          <div className="flex items-center gap-2 text-[13px] text-ink-soft">
+            <Spinner /> Loading your business profile…
+          </div>
+        </Card>
+      </div>
+    );
   }
 
   return (
@@ -80,7 +131,7 @@ export function ProfileEditor({
 
       {notice && (
         <div className="mb-4">
-          <Banner tone="success">{notice}</Banner>
+          <Banner tone={noticeError ? 'danger' : 'success'}>{notice}</Banner>
         </div>
       )}
 

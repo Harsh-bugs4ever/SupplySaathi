@@ -14,11 +14,9 @@ import type { CaseSnapshot } from './types';
 export function BriefCard({
   snapshot,
   onAnswer,
-  onToggleMemory,
 }: {
   snapshot: CaseSnapshot;
   onAnswer: (answers: Array<{ id: string; answer: string }>) => Promise<void>;
-  onToggleMemory: (id: string, accepted: boolean) => void;
 }) {
   const { case: c, requirements } = snapshot;
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -115,15 +113,7 @@ export function BriefCard({
                       Remembered from a previous case · {m.source}
                     </p>
                   </div>
-                  <label className="flex shrink-0 items-center gap-1.5 text-[12px] text-ink-soft">
-                    <input
-                      type="checkbox"
-                      checked={m.accepted}
-                      onChange={(e) => onToggleMemory(m.id, e.target.checked)}
-                      className="accent-[var(--color-primary)]"
-                    />
-                    Apply
-                  </label>
+                  <span className="text-[11px] text-ink-soft">{m.accepted ? 'Applied at creation' : 'Not applied'}</span>
                 </li>
               ))}
             </ul>

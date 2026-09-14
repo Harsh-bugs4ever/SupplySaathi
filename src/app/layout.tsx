@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#F5F3EC',
+  themeColor: '#090d12',
   width: 'device-width',
   initialScale: 1,
 };
@@ -31,15 +31,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className="min-h-screen">
-        {/* Demo mode is announced permanently and unmissably. A viewer must
-            never be in doubt about whether the data in front of them is real. */}
-        {config.mode === 'demo' && (
-          <div className="sticky top-0 z-30 flex items-center justify-center gap-2 bg-warning px-4 py-1.5 text-center text-[12px] font-medium text-white">
-            <span aria-hidden>●</span>
-            Demo mode — sample supplier data; no real outreach.
-          </div>
-        )}
-
         <div className="flex min-h-screen flex-col lg:flex-row">
           <Nav mode={config.mode} />
           <main className="min-w-0 flex-1 pb-20 lg:pb-0">{children}</main>

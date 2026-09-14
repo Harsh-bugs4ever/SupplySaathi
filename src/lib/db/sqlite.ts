@@ -145,8 +145,8 @@ export function openDatabase(path: string): Db {
     transaction<T>(fn: () => T): () => T {
       return () => {
         if (inTransaction) return fn();
+        db.exec('BEGIN IMMEDIATE');
         inTransaction = true;
-        db.exec('BEGIN');
         try {
           const result = fn();
           db.exec('COMMIT');

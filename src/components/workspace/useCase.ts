@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { apiUrl, streamUrl } from '@/lib/client/api';
 import type { CaseSnapshot } from './types';
 import type { ResearchEvent } from '@/lib/domain/types';
 
@@ -26,7 +27,10 @@ export function useCase(caseId: string) {
 
   const refetch = useCallback(async () => {
     try {
-      const res = await fetch(`/api/cases/${caseId}`, { cache: 'no-store' });
+      const res = await fetch(apiUrl(`/api/cases/${caseId}`), {
+        cache: 'no-store',
+        credentials: 'include',
+      });
       if (!res.ok) {
         setError(res.status === 404 ? 'This case no longer exists.' : 'Could not load this case.');
         return null;
@@ -61,7 +65,9 @@ export function useCase(caseId: string) {
     }
     if (sourceRef.current) return;
 
-    const es = new EventSource(`/api/cases/${caseId}/stream?lastSeq=${lastSeq.current}`);
+    // withCredentials matters only when the API is on another origin; it is
+    // harmless same-origin and keeps the cross-origin setup working.
+    const es = new EventSource(streamUrl(caseId, lastSeq.current), { withCredentials: true });
     sourceRef.current = es;
 
     es.addEventListener('event', (e) => {

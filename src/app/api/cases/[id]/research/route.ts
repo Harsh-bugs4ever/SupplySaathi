@@ -15,6 +15,8 @@ export const POST = handler(async (_req, ctx) => {
   const id = await paramOf(ctx, 'id');
   const database = db();
 
+  // Keep the run, queued job, shortlist reset, and state change atomic.
+  return database.transaction(() => {
   const sourcingCase = repo.getCase(id, database);
   if (!sourcingCase) return fail('Case not found.', 404);
 
@@ -73,4 +75,5 @@ export const POST = handler(async (_req, ctx) => {
   );
 
   return ok({ run, alreadyRunning: false }, { status: 202 });
+  })();
 });

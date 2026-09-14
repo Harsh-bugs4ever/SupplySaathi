@@ -65,14 +65,15 @@ export function Nav({ mode }: { mode: 'demo' | 'live' }) {
   return (
     <>
       {/* Desktop rail */}
-      <nav className="hidden shrink-0 border-r border-line bg-surface lg:flex lg:w-[228px] lg:flex-col">
+      <nav className="app-rail hidden shrink-0 border-r border-line bg-surface lg:flex lg:w-[228px] lg:flex-col">
         <div className="px-5 py-5">
           <Link href="/" className="block">
             <Wordmark />
           </Link>
         </div>
 
-        <ul className="flex-1 space-y-0.5 px-3">
+        <div className="px-6 pb-3 pt-8 text-[10px] font-semibold uppercase tracking-[0.18em] text-ink-faint">Workspace</div>
+        <ul className="flex-1 space-y-2 px-3">
           {ITEMS.map((item) => {
             const active = isActive(item.href);
             return (
@@ -80,9 +81,9 @@ export function Nav({ mode }: { mode: 'demo' | 'live' }) {
                 <Link
                   href={item.href}
                   aria-current={active ? 'page' : undefined}
-                  className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-[14px] transition ${
+                  className={`flex items-center gap-2.5 rounded-xl px-3 py-3 text-[14px] transition ${
                     active
-                      ? 'bg-primary-wash font-medium text-primary'
+                      ? 'bg-primary font-medium text-paper shadow-sm'
                       : 'text-ink-soft hover:bg-surface-sunk hover:text-ink'
                   }`}
                 >
@@ -102,7 +103,7 @@ export function Nav({ mode }: { mode: 'demo' | 'live' }) {
               className={`h-1.5 w-1.5 rounded-full ${mode === 'live' ? 'bg-primary' : 'bg-warning'}`}
               aria-hidden
             />
-            <span className="uppercase tracking-[0.1em]">{mode} mode</span>
+            <span className="uppercase tracking-[0.1em]">{mode} default</span>
           </div>
           <p className="mt-2 text-[11px] leading-relaxed text-ink-faint">
             Evidence behind every recommendation.

@@ -23,48 +23,47 @@ export interface CatalogueEntry {
   note: string;
 }
 
+/**
+ * Each entry was live-checked on 2026-09-13 and returned readable content.
+ * The public web moves, so a stale entry is expected over time — that is why a
+ * failed retrieval is reported as a retrieval failure and never as a statement
+ * about product availability, and why `npm run doctor` exists.
+ */
 export const SUPPLIER_CATALOGUE: CatalogueEntry[] = [
   {
-    supplier: 'IndiaMART',
-    url: 'https://dir.indiamart.com/impcat/cake-boxes.html',
+    supplier: 'Amazon.in',
+    url: 'https://www.amazon.in/s?k=cake+box+10x10x5+inch',
     region: 'IN',
     category: 'bakery_packaging',
-    note: 'Large B2B marketplace listing many cake-box manufacturers with MOQ and contact details.',
+    note: 'Retail listings that state dimensions and pack counts explicitly. Verified: returns results.',
   },
   {
-    supplier: 'IndiaMART (Pune)',
-    url: 'https://dir.indiamart.com/pune/cake-boxes.html',
-    region: 'IN-MH',
-    category: 'bakery_packaging',
-    note: 'Pune-local sellers, relevant when delivery time matters.',
-  },
-  {
-    supplier: 'Bakerskart',
-    url: 'https://www.bakerskart.com/collections/cake-boxes',
+    supplier: 'Flipkart',
+    url: 'https://www.flipkart.com/search?q=cake%20box%2010%20inch',
     region: 'IN',
     category: 'bakery_packaging',
-    note: 'Bakery supplies retailer with published pack sizes and prices.',
+    note: 'Retail listings with pack sizes. Verified: returns results.',
   },
   {
-    supplier: 'Bakemate / Bakery Mart',
-    url: 'https://bakerymart.in/product-category/packaging/cake-box/',
+    supplier: 'IndiaMART (search)',
+    url: 'https://dir.indiamart.com/search.mp?ss=cake+box',
     region: 'IN',
     category: 'bakery_packaging',
-    note: 'Retailer with per-pack pricing.',
+    note: 'B2B marketplace; sellers publish minimum order quantities. Content is JS-heavy, so a browser retry often helps.',
   },
   {
     supplier: 'TradeIndia',
     url: 'https://www.tradeindia.com/manufacturers/cake-boxes.html',
     region: 'IN',
     category: 'bakery_packaging',
-    note: 'B2B directory; useful for manufacturers quoting at volume.',
+    note: 'Manufacturer directory, useful for volume quotes.',
   },
   {
-    supplier: 'Amazon Business India',
-    url: 'https://www.amazon.in/s?k=cake+box+10x10x5+inch',
+    supplier: 'JioMart',
+    url: 'https://www.jiomart.com/search/cake%20box',
     region: 'IN',
     category: 'bakery_packaging',
-    note: 'Retail listings with explicit dimensions and pack counts.',
+    note: 'Retail listings. Thin without a browser render.',
   },
 ];
 

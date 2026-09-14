@@ -22,6 +22,12 @@ import {
 } from '../providers/reasoning/schemas';
 import { EXTRACT_SYSTEM, PLAN_SYSTEM, extractUserPrompt, planUserPrompt } from './prompts';
 import { summarizeBrief } from './brief';
+import {
+  cleanScrapedName,
+  extractProductLinks,
+  looksLikeListingPage,
+  supplierNameFromHost,
+} from './listing';
 import type {
   CandidateProduct,
   Evidence,
@@ -163,7 +169,13 @@ export async function runResearch(
     const candidates: Array<{ candidate: CandidateProduct; evaluations: EvaluationResult[] }> = [];
     const seenKeys = new Set<string>();
 
-    for (const url of urls) {
+    // A queue rather than a fixed list: a listing page contributes the product
+    // URLs it links to, which are then fetched like any other page (and still
+    // charged against the same budget).
+    const queue = [...urls];
+
+    for (let qi = 0; qi < queue.length; qi++) {
+      const url = queue[qi];
       if (cancelled()) {
         emit('status', 'Research cancelled at your request.');
         repo.updateRun(runId, { status: 'cancelled', finishedAt: new Date().toISOString() }, db);
@@ -215,6 +227,28 @@ export async function runResearch(
           `${hostOf(url)} contained text addressed to automated agents. It was treated as page content only.`,
           outcome.page.injectionFlags.join(', '),
         );
+      }
+
+      // A listing page is a source of product URLs, not a product. Turning one
+      // into a candidate would splice a price from one listing onto a pack size
+      // from another — a fabricated product that never existed.
+      if (looksLikeListingPage(outcome.page.markdown, outcome.page.url)) {
+        const links = extractProductLinks(
+          outcome.page.markdown,
+          outcome.page.url,
+          Math.min(6, budget.pagesRemaining),
+        );
+        const fresh = links.filter((l) => !queue.includes(l));
+        queue.push(...fresh);
+
+        emit(
+          'extract',
+          fresh.length
+            ? `${hostOf(url)} is a listing page — found ${fresh.length} product page${fresh.length === 1 ? '' : 's'} to check.`
+            : `${hostOf(url)} is a listing page, but no individual product pages could be read from it.`,
+          fresh.length ? fresh.join('\n') : undefined,
+        );
+        continue;
       }
 
       // ── Extract ────────────────────────────────────────────────────────────
@@ -433,8 +467,12 @@ async function buildCandidate(args: {
   const draft: Omit<CandidateProduct, 'id' | 'createdAt'> = {
     caseId,
     runId,
-    supplierName: extracted.supplierName ?? hostOf(page.url),
-    productTitle: extracted.productTitle ?? page.title ?? 'Untitled product',
+    supplierName:
+      cleanScrapedName(extracted.supplierName) ?? supplierNameFromHost(page.url),
+    productTitle:
+      cleanScrapedName(extracted.productTitle) ??
+      cleanScrapedName(page.title) ??
+      'Untitled product',
     sourceUrl: page.url,
     imageUrl: extracted.imageUrl,
     retrievedAt: page.retrievedAt,

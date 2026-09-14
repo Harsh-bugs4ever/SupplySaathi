@@ -42,7 +42,7 @@ export function Button({
     md: 'px-4 py-2.5 text-[14px]',
   };
   const variants = {
-    primary: 'bg-primary text-white hover:bg-primary-hover active:scale-[0.99] lift',
+    primary: 'bg-primary text-paper hover:bg-primary-hover active:scale-[0.99] lift',
     secondary: 'bg-surface text-ink border border-line hover:border-line-strong hover:bg-paper paper-edge',
     ghost: 'text-ink-soft hover:text-ink hover:bg-surface-sunk',
     danger: 'bg-surface text-danger-ink border border-danger/35 hover:bg-danger-wash',
@@ -224,13 +224,32 @@ export function Drawer({
 
   useEffect(() => {
     if (!open) return;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
     panelRef.current?.focus();
 
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
+      if (e.key !== 'Tab') return;
+      const items = Array.from(panelRef.current?.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex="0"]',
+      ) ?? []).filter((item) => item.getClientRects().length > 0);
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (!first) { e.preventDefault(); return; }
+      if (e.shiftKey && (document.activeElement === first || document.activeElement === panelRef.current)) {
+        e.preventDefault(); last.focus();
+      } else if (!e.shiftKey && (document.activeElement === last || document.activeElement === panelRef.current)) {
+        e.preventDefault(); first.focus();
+      }
     };
     document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = previousOverflow;
+      previousFocus?.focus();
+    };
   }, [open, onClose]);
 
   if (!open) return null;
@@ -238,7 +257,7 @@ export function Drawer({
   return (
     <>
       <div
-        className="fixed inset-0 z-40 bg-ink/20 backdrop-blur-[1px]"
+        className="fixed inset-0 z-40 bg-black/60 backdrop-blur-[4px]"
         onClick={onClose}
         aria-hidden
       />
@@ -290,7 +309,7 @@ export function StatePill({ state }: { state: string }) {
     OUTREACH_DRAFTED: 'bg-surface text-ink border-line-strong',
     AWAITING_APPROVAL: 'bg-warning-wash text-warning-ink border-warning/35',
     SENDING: 'bg-primary-wash text-primary border-primary/25',
-    OUTREACH_COMPLETE: 'bg-primary text-white border-primary',
+    OUTREACH_COMPLETE: 'bg-primary text-paper border-primary',
     PARTIAL_RESULTS: 'bg-warning-wash text-warning-ink border-warning/35',
     FAILED: 'bg-danger-wash text-danger-ink border-danger/30',
     CANCELLED: 'bg-surface-sunk text-ink-faint border-line',

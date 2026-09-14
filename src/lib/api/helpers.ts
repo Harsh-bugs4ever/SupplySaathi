@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { config } from '../config/env';
 import { getDb, migrate } from '../db/client';
 import { log } from '../security/redact';
+import { hasCredentials } from '../security/auth';
 
 /**
  * Shared route plumbing: input validation, a consistent error envelope, and
@@ -75,11 +76,7 @@ export function requireAuth(req: Request): NextResponse | null {
     return fail('Server authentication is misconfigured.', 500);
   }
 
-  const cookie = req.headers.get('cookie') ?? '';
-  const token = cookie.match(/(?:^|;\s*)ss_auth=([^;]+)/)?.[1];
-  const header = req.headers.get('x-supplysaathi-auth');
-
-  if (token === config.auth.password || header === config.auth.password) return null;
+  if (hasCredentials(req, config.auth.password)) return null;
   return fail('Authentication required.', 401);
 }
 
@@ -88,6 +85,10 @@ export function handler(
   fn: (req: Request, ctx: any) => Promise<NextResponse>,
 ): (req: Request, ctx: any) => Promise<NextResponse> {
   return async (req, ctx) => {
+    const origin = req.headers.get('origin');
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && origin && origin !== new URL(req.url).origin && origin !== new URL(config.baseUrl).origin) {
+      return fail('Cross-origin requests are not allowed.', 403);
+    }
     const auth = requireAuth(req);
     if (auth) return auth;
 

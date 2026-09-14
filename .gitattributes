@@ -1,0 +1,25 @@
+# Line endings for files Linux has to execute.
+#
+# This repo is developed on Windows with core.autocrlf=true, which rewrites
+# checked-out files to CRLF. A shell script with CRLF endings fails inside a
+# container with a misleading "no such file or directory" — the kernel is
+# reporting the shebang "/bin/sh\r", not the script itself.
+#
+# Scoped deliberately to the files that matter, rather than a repo-wide
+# `* text=auto eol=lf`, which would renormalise every tracked file and bury the
+# next commit in whitespace changes.
+
+*.sh                 text eol=lf
+docker-entrypoint.sh text eol=lf
+Dockerfile           text eol=lf
+.dockerignore        text eol=lf
+*.yaml               text eol=lf
+*.yml                text eol=lf
+
+# Never line-ending-convert binary assets.
+*.png   binary
+*.jpg   binary
+*.ico   binary
+*.woff  binary
+*.woff2 binary
+*.db    binary

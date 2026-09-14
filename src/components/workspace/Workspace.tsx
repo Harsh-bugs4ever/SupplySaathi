@@ -3,13 +3,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Banner, Button, Card, SectionHeading, Spinner } from '../ui';
 import { GhostEmpty, GhostMark } from '../Logo';
-import { BriefCard } from './BriefCard';
+import { BriefCard, ModeNotice } from './BriefCard';
 import { Timeline } from './Timeline';
 import { CandidateCard } from './CandidateCard';
 import { Comparison } from './Comparison';
 import { EvidenceDrawer } from './EvidenceDrawer';
 import { OutreachTray } from './OutreachTray';
 import { useCase } from './useCase';
+import { apiUrl } from '@/lib/client/api';
 import type { CandidateWithEvals, EvidenceTarget } from './types';
 
 /**
@@ -29,7 +30,7 @@ export function Workspace({ caseId }: { caseId: string }) {
   const [health, setHealth] = useState<{ configured: boolean; allowlist: string[] } | null>(null);
 
   useEffect(() => {
-    fetch('/api/health')
+    fetch(apiUrl('/api/health'), { credentials: 'include' })
       .then((r) => r.json())
       .then((h) =>
         setHealth({
@@ -99,12 +100,17 @@ export function Workspace({ caseId }: { caseId: string }) {
   // ── Actions ───────────────────────────────────────────────────────────────
 
   async function post(path: string, body?: unknown): Promise<any> {
-    const res = await fetch(path, {
+    try {
+    const res = await fetch(apiUrl(path), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: body ? JSON.stringify(body) : undefined,
+      credentials: 'include',
     });
     return { ok: res.ok, data: await res.json().catch(() => ({})) };
+    } catch {
+      return { ok: false, data: { error: 'Connection interrupted. Refresh the case to check its status before trying again.' } };
+    }
   }
 
   async function startResearch() {
@@ -117,12 +123,14 @@ export function Workspace({ caseId }: { caseId: string }) {
   }
 
   async function cancelResearch() {
-    await post(`/api/cases/${caseId}/cancel`);
+    const result = await post(`/api/cases/${caseId}/cancel`);
+    if (!result.ok) setNotice(result.data.error ?? 'Could not cancel research.');
     await refetch();
   }
 
   async function answerClarifications(answers: Array<{ id: string; answer: string }>) {
-    await post(`/api/cases/${caseId}/clarify`, { answers });
+    const result = await post(`/api/cases/${caseId}/clarify`, { answers });
+    if (!result.ok) setNotice(result.data.error ?? 'Could not save answers.');
     await refetch();
   }
 
@@ -137,7 +145,8 @@ export function Workspace({ caseId }: { caseId: string }) {
   }
 
   async function editDraft(id: string, patch: any): Promise<string | null> {
-    const res = await fetch(`/api/drafts/${id}`, {
+    const res = await fetch(apiUrl(`/api/drafts/${id}`), {
+      credentials: 'include',
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(patch),
@@ -154,23 +163,14 @@ export function Workspace({ caseId }: { caseId: string }) {
   }
 
   async function withdrawApproval(id: string) {
-    await fetch(`/api/drafts/${id}/approve`, { method: 'DELETE' });
+    await fetch(apiUrl(`/api/drafts/${id}/approve`), { method: 'DELETE', credentials: 'include' });
     await refetch();
   }
 
   async function sendDraft(id: string): Promise<string | null> {
-    const { data } = await post(`/api/drafts/${id}/send`);
+    const { ok, data } = await post(`/api/drafts/${id}/send`);
     await refetch();
-    return data.message ?? null;
-  }
-
-  function toggleMemory(id: string, accepted: boolean) {
-    // Local-only for the current view; memory is re-applied per case at creation.
-    setNotice(
-      accepted
-        ? 'That preference will be applied on the next research round.'
-        : 'That preference will be ignored for this case.',
-    );
+    return ok ? (data.message ?? null) : (data.error ?? 'Could not send. Check the attempt status before retrying.');
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -201,6 +201,7 @@ export function Workspace({ caseId }: { caseId: string }) {
 
   return (
     <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mb-4"><ModeNotice mode={c.mode} /></div>
       {notice && (
         <div className="mb-4">
           <Banner tone="info">{notice}</Banner>
@@ -213,7 +214,6 @@ export function Workspace({ caseId }: { caseId: string }) {
           <BriefCard
             snapshot={snapshot}
             onAnswer={answerClarifications}
-            onToggleMemory={toggleMemory}
           />
 
           {/* Primary action */}

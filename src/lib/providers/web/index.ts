@@ -64,21 +64,35 @@ export class CompositeWebProvider implements WebResearchProvider {
   }
 
   async fetchPage(url: string, opts?: { useBrowser?: boolean }): Promise<FetchOutcome> {
-    let lastFailure: FetchOutcome | null = null;
+    const failures: FetchOutcome[] = [];
 
     for (const p of this.providers) {
       const outcome = await p.fetchPage(url, opts);
       if (outcome.ok) return outcome;
 
-      lastFailure = outcome;
+      failures.push(outcome);
       // A blocked URL or a 404 will fail identically everywhere; only fall
       // through when the failure looks provider-specific.
       if (!outcome.failure.retryable) return outcome;
       log.info(`${p.kind} could not retrieve ${url}; trying next provider.`);
     }
 
-    return lastFailure!;
+    // Report the most informative failure, not simply the last one. A trailing
+    // "Bright Data is not configured" would otherwise mask the real cause —
+    // say, an Anakin rate limit — and send the user to fix the wrong thing.
+    const informative = failures.find((f) => !isConfigurationFailure(f));
+    return informative ?? failures[0];
   }
+}
+
+/**
+ * A failure caused by the provider having no credentials, rather than by
+ * anything about the page. These say nothing useful about why a retrieval
+ * failed when another provider actually tried and was rejected.
+ */
+function isConfigurationFailure(outcome: FetchOutcome): boolean {
+  if (outcome.ok) return false;
+  return /is not configured|api key or .* zone missing|is not set/i.test(outcome.failure.reason);
 }
 
 /**

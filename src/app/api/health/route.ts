@@ -45,6 +45,21 @@ export const GET = handler(async () => {
   return ok({
     mode: config.mode,
     timezone: config.timezone,
+    /**
+     * Whether a credential is present — never the credential itself.
+     *
+     * The Settings page is a client component (the UI deploys separately from
+     * the API and has no access to server config), so it needs these booleans
+     * over the wire. Sending the key values instead would put them in the
+     * browser, which is the one thing this project promises never to do.
+     */
+    credentials: {
+      anakin: Boolean(config.anakin.apiKey),
+      deepseek: Boolean(config.deepseek.apiKey),
+      brightDataSearch: Boolean(config.brightData.apiKey && config.brightData.serpZone),
+      brightDataRetrieval: Boolean(config.brightData.apiKey && config.brightData.unlockerZone),
+      cognee: Boolean(config.cognee.apiKey && config.cognee.baseUrl),
+    },
     // Never echo a key back, only whether one is present.
     reasoning: reasoningHealth,
     web: webHealth,

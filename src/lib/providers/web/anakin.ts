@@ -67,12 +67,15 @@ export class AnakinProvider implements WebResearchProvider {
 
     // Probe scrape with a tiny, stable, well-known page.
     try {
-      await postJson<ScrapeResponse>(
+      const probe = await postJson<ScrapeResponse>(
         `${this.cfg.baseUrl}/url-scraper/scrape`,
         { url: 'https://example.com', country: this.cfg.country },
         this.headers(),
         { timeoutMs: 30_000, retries: 0, label: 'Anakin scrape health' },
       );
+      if (probe.error || (probe.status && probe.status !== 'completed') || !(probe.markdown?.trim() || probe.cleanedHtml?.trim())) {
+        throw new Error(probe.error || 'The retrieval probe returned no completed, readable page.');
+      }
       capabilities.push({
         name: 'page_retrieval',
         available: true,
@@ -98,12 +101,13 @@ export class AnakinProvider implements WebResearchProvider {
       });
     } else {
       try {
-        await postJson<SearchResponse>(
+        const probe = await postJson<SearchResponse>(
           `${this.cfg.baseUrl}/search`,
           { prompt: 'packaging supplier', limit: 1 },
           this.headers(),
           { timeoutMs: 30_000, retries: 0, label: 'Anakin search health' },
         );
+        if (probe.error || !Array.isArray(probe.results)) throw new Error(probe.error || 'The search probe did not return a results array.');
         capabilities.push({
           name: 'search',
           available: true,

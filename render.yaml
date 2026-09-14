@@ -1,0 +1,83 @@
+# Render Blueprint for SupplySaathi.
+#
+# One service, one disk. The web app and the agent worker share a SQLite file,
+# and a Render disk is reachable by exactly one service instance — so splitting
+# the worker into its own service would leave it unable to see the database.
+#
+# Deploy: push this repo to GitHub, then in Render choose
+# New → Blueprint and point it at the repository.
+#
+# Docs: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: supplysaathi
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    # Cheapest paid instance type; the free tier cannot attach a disk.
+    # If the worker is OOM-killed part-way through a research run, move up to
+    # 1c-2g — holding several scraped pages in memory is the peak.
+    plan: 0.5c-512mb
+    region: singapore # closest to the Indian suppliers this first version targets
+    branch: main
+
+    # A disk pins the service to a single instance and rules out zero-downtime
+    # deploys. Both are correct here: concurrent writers to one SQLite file
+    # would corrupt it, and job recovery assumes a single worker.
+    numInstances: 1
+    disk:
+      name: supplysaathi-data
+      mountPath: /app/data
+      sizeGB: 1
+
+    # Left unset deliberately. /api/health sits behind the password gate and
+    # probes external providers on every call, so using it as a liveness check
+    # would both fail authentication and bill third-party requests forever.
+    # healthCheckPath:
+
+    envVars:
+      - key: APP_MODE
+        value: demo # switch to "live" once providers are verified in Settings
+
+      - key: DATABASE_PATH
+        value: /app/data/supplysaathi.db
+
+      - key: APP_TIMEZONE
+        value: Asia/Kolkata
+
+      # The interface is served from Vercel, so this is the Vercel URL, not
+      # Render's. It is used for the cross-origin check on writes. Set it after
+      # the Vercel deploy exists.
+      - key: APP_BASE_URL
+        sync: false
+
+      # API_ORIGIN is deliberately absent. It is what tells a deployment to
+      # forward /api elsewhere; setting it here would make Render proxy to
+      # itself. It belongs on Vercel only.
+
+      # This instance can spend API credits and send email, so it is gated.
+      - key: APP_AUTH_ENABLED
+        value: 'true'
+      - key: APP_AUTH_PASSWORD
+        generateValue: true # Render generates and stores it; read it in the dashboard
+
+      # Outreach stays off until a sender is deliberately configured.
+      - key: EMAIL_PROVIDER
+        value: none
+
+      # Provider credentials: set in the Render dashboard, never in this file.
+      # `sync: false` means Render prompts for the value and keeps it out of Git.
+      - key: ANAKIN_API_KEY
+        sync: false
+      - key: DEEPSEEK_API_KEY
+        sync: false
+      - key: BRIGHTDATA_API_KEY
+        sync: false
+      - key: BRIGHTDATA_UNLOCKER_ZONE
+        sync: false
+      - key: BRIGHTDATA_SERP_ZONE
+        sync: false
+      - key: COGNEE_API_KEY
+        sync: false
+      - key: COGNEE_BASE_URL
+        sync: false

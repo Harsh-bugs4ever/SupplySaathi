@@ -38,10 +38,13 @@ beforeEach(() => {
   );
   caseId = c.id;
 
+  // A candidate is foreign-keyed to a real run, so one has to exist first.
+  const run = repo.createRun(caseId, 'demo', 1, db);
+
   const cand = repo.upsertCandidate(
     {
       caseId,
-      runId: 'run1',
+      runId: run.id,
       supplierName: 'BoxCraft',
       productTitle: 'Cake box',
       sourceUrl: 'https://boxcraft.example.invalid/p',
