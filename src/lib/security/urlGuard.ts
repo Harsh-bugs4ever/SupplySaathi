@@ -77,7 +77,7 @@ export function checkUrl(raw: string): UrlCheck {
  * still a hole; closing it properly requires resolving and pinning the socket,
  * which we cannot do through a third-party scraping API. That residual gap is
  * documented in the README under Known limitations. In practice the fetch is
- * performed by Anakin or Bright Data from their own infrastructure, not from
+ * performed by the web provider from its own infrastructure, not from
  * our network, which is what actually contains the risk here.
  */
 export function isPrivateIpLiteral(host: string): boolean {

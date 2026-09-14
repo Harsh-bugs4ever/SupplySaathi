@@ -2,7 +2,7 @@
  * Provider ports.
  *
  * Domain logic depends only on these interfaces. Swapping DeepSeek for another
- * model, or Anakin for Bright Data, must not require a change anywhere outside
+ * model, or Anakin for another web provider, must not require a change outside
  * `lib/providers/`. That is also what makes demo mode honest: the fixture
  * implementations satisfy the same contract, so the agent runs the same code
  * path either way.

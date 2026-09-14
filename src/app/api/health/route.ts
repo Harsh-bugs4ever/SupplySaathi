@@ -56,8 +56,6 @@ export const GET = handler(async () => {
     credentials: {
       anakin: Boolean(config.anakin.apiKey),
       deepseek: Boolean(config.deepseek.apiKey),
-      brightDataSearch: Boolean(config.brightData.apiKey && config.brightData.serpZone),
-      brightDataRetrieval: Boolean(config.brightData.apiKey && config.brightData.unlockerZone),
       cognee: Boolean(config.cognee.apiKey && config.cognee.baseUrl),
     },
     // Never echo a key back, only whether one is present.

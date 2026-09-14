@@ -17,8 +17,6 @@ import { api } from '@/lib/client/api';
 interface Credentials {
   anakin: boolean;
   deepseek: boolean;
-  brightDataSearch: boolean;
-  brightDataRetrieval: boolean;
   cognee: boolean;
 }
 
@@ -97,19 +95,13 @@ export function SettingsView() {
             <Tile
               title="Page retrieval"
               value={
-                summary.credentials.anakin
-                  ? 'Anakin key configured'
-                  : summary.credentials.brightDataRetrieval
-                    ? 'Bright Data zone configured'
-                    : 'Anakin keyless access'
+                summary.credentials.anakin ? 'Anakin key configured' : 'Anakin keyless access'
               }
             />
             <Tile
               title="Supplier discovery"
               value={
-                summary.credentials.anakin || summary.credentials.brightDataSearch
-                  ? 'Search credentials configured'
-                  : 'Curated catalogue'
+                summary.credentials.anakin ? 'Search credentials configured' : 'Curated catalogue'
               }
             />
             <Tile

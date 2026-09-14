@@ -7,15 +7,15 @@ import type {
   WebResearchProvider,
 } from '../types';
 import { AnakinProvider } from './anakin';
-import { BrightDataProvider } from './brightdata';
 import { FixtureWebProvider } from './fixture';
 
 /**
  * Composite WebResearchProvider.
  *
- * Tries each configured provider in order and falls through on failure, so a
- * Bright Data outage does not end a research run that Anakin could serve (and
- * vice versa). Two rules hold this together:
+ * Tries each configured provider in order and falls through on failure, so one
+ * provider's outage does not end a research run another could serve. Only
+ * Anakin ships today, but the seam is the reason swapping or adding a provider
+ * touches nothing outside this directory. Two rules hold it together:
  *
  *   1. The provider that actually retrieved a page is recorded on the page, so
  *      the evidence trail says where a fact came from.
@@ -78,8 +78,8 @@ export class CompositeWebProvider implements WebResearchProvider {
     }
 
     // Report the most informative failure, not simply the last one. A trailing
-    // "Bright Data is not configured" would otherwise mask the real cause —
-    // say, an Anakin rate limit — and send the user to fix the wrong thing.
+    // "not configured" from an unconfigured fallback would otherwise mask the
+    // real cause — say, a rate limit — and send the user to fix the wrong thing.
     const informative = failures.find((f) => !isConfigurationFailure(f));
     return informative ?? failures[0];
   }
@@ -92,7 +92,7 @@ export class CompositeWebProvider implements WebResearchProvider {
  */
 function isConfigurationFailure(outcome: FetchOutcome): boolean {
   if (outcome.ok) return false;
-  return /is not configured|api key or .* zone missing|is not set/i.test(outcome.failure.reason);
+  return /is not configured|is not set/i.test(outcome.failure.reason);
 }
 
 /**
@@ -114,14 +114,6 @@ export function createWebProvider(cfg: AppConfig, mode: 'demo' | 'live'): WebRes
         timeoutMs: cfg.anakin.timeoutMs,
         maxPageBytes: cfg.agent.maxPageBytes,
       }),
-    brightdata: () =>
-      new BrightDataProvider({
-        apiKey: cfg.brightData.apiKey,
-        unlockerZone: cfg.brightData.unlockerZone,
-        serpZone: cfg.brightData.serpZone,
-        timeoutMs: cfg.brightData.timeoutMs,
-        maxPageBytes: cfg.agent.maxPageBytes,
-      }),
   };
 
   const chosen = cfg.webProviderOrder
@@ -137,4 +129,4 @@ export function createWebProvider(cfg: AppConfig, mode: 'demo' | 'live'): WebRes
   return new CompositeWebProvider(chosen);
 }
 
-export { AnakinProvider, BrightDataProvider, FixtureWebProvider };
+export { AnakinProvider, FixtureWebProvider };

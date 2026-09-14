@@ -1,4 +1,4 @@
-import { db, paramOf, requireAuth } from '@/lib/api/helpers';
+import { db, paramOf, refuseIfProxyRole, requireAuth } from '@/lib/api/helpers';
 import * as repo from '@/lib/db/repo';
 
 export const runtime = 'nodejs';
@@ -16,6 +16,9 @@ export const dynamic = 'force-dynamic';
  * abandoned tab does not hold a connection open indefinitely.
  */
 export async function GET(req: Request, ctx: { params: Promise<Record<string, string>> }) {
+  const misrouted = refuseIfProxyRole();
+  if (misrouted) return misrouted;
+
   const auth = requireAuth(req);
   if (auth) return auth;
 

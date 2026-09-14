@@ -21,12 +21,6 @@ export interface AppConfig {
     useBrowserOnRetry: boolean;
     timeoutMs: number;
   };
-  brightData: {
-    apiKey: string;
-    unlockerZone: string;
-    serpZone: string;
-    timeoutMs: number;
-  };
   cognee: { apiKey: string; baseUrl: string; dataset: string; timeoutMs: number };
   email: {
     provider: EmailProviderKind;
@@ -82,7 +76,7 @@ export function loadConfig(): AppConfig {
       model: str('DEEPSEEK_MODEL', 'deepseek-flash'),
       timeoutMs: num('DEEPSEEK_TIMEOUT_MS', 60_000),
     },
-    webProviderOrder: str('WEB_PROVIDER_ORDER', 'anakin,brightdata')
+    webProviderOrder: str('WEB_PROVIDER_ORDER', 'anakin')
       .split(',')
       .map((s) => s.trim().toLowerCase())
       .filter(Boolean),
@@ -92,12 +86,6 @@ export function loadConfig(): AppConfig {
       country: str('ANAKIN_COUNTRY', 'in'),
       useBrowserOnRetry: bool('ANAKIN_USE_BROWSER_ON_RETRY', true),
       timeoutMs: num('ANAKIN_TIMEOUT_MS', 95_000),
-    },
-    brightData: {
-      apiKey: str('BRIGHTDATA_API_KEY'),
-      unlockerZone: str('BRIGHTDATA_UNLOCKER_ZONE'),
-      serpZone: str('BRIGHTDATA_SERP_ZONE'),
-      timeoutMs: num('BRIGHTDATA_TIMEOUT_MS', 45_000),
     },
     cognee: {
       apiKey: str('COGNEE_API_KEY'),

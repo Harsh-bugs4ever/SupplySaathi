@@ -1,5 +1,5 @@
 import { config } from '@/lib/config/env';
-import { db, paramOf, requireAuth } from '@/lib/api/helpers';
+import { db, paramOf, refuseIfProxyRole, requireAuth } from '@/lib/api/helpers';
 import * as repo from '@/lib/db/repo';
 import { buildEml } from '@/lib/providers/email';
 
@@ -12,6 +12,9 @@ export const runtime = 'nodejs';
  * draft status becomes "exported", and the UI labels it that way.
  */
 export async function GET(req: Request, ctx: { params: Promise<Record<string, string>> }) {
+  const misrouted = refuseIfProxyRole();
+  if (misrouted) return misrouted;
+
   const auth = requireAuth(req);
   if (auth) return auth;
 

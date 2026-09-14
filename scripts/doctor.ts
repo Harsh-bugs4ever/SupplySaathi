@@ -54,9 +54,6 @@ async function main() {
   const keys: Array<[string, boolean]> = [
     ['DEEPSEEK_API_KEY', Boolean(cfg.deepseek.apiKey)],
     ['ANAKIN_API_KEY', Boolean(cfg.anakin.apiKey)],
-    ['BRIGHTDATA_API_KEY', Boolean(cfg.brightData.apiKey)],
-    ['BRIGHTDATA_UNLOCKER_ZONE', Boolean(cfg.brightData.unlockerZone)],
-    ['BRIGHTDATA_SERP_ZONE', Boolean(cfg.brightData.serpZone)],
     ['COGNEE_API_KEY', Boolean(cfg.cognee.apiKey)],
     ['COGNEE_BASE_URL', Boolean(cfg.cognee.baseUrl)],
   ];
@@ -77,7 +74,7 @@ async function main() {
   render(await createReasoningProvider(cfg, 'live').health());
 
   // ── Web ───────────────────────────────────────────────────────────────────
-  console.log('\n[ Web research — Anakin, Bright Data ]');
+  console.log('\n[ Web research — Anakin ]');
   const web = createWebProvider(cfg, 'live');
   const webHealths =
     web instanceof CompositeWebProvider ? await web.healthAll() : [await web.health()];

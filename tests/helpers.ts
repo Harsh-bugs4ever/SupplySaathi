@@ -48,7 +48,6 @@ export function testConfig(overrides: Partial<AppConfig> = {}): AppConfig {
     // that guarantee independent of mode.
     deepseek: { ...base.deepseek, apiKey: '' },
     anakin: { ...base.anakin, apiKey: '' },
-    brightData: { ...base.brightData, apiKey: '' },
     cognee: { ...base.cognee, apiKey: '', baseUrl: '' },
     email: { ...base.email, provider: 'none', allowlist: [] },
     ...overrides,

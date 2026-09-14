@@ -1,6 +1,6 @@
 # Getting and verifying provider keys
 
-Four integrations, in the order they're worth adding. **All of them go on the
+Three integrations, in the order they're worth adding. **All of them go on the
 API host (Render) only** — never on Vercel, and never in `NEXT_PUBLIC_*`
 variables, which are compiled into the browser bundle.
 
@@ -65,33 +65,8 @@ the UI rather than passed off as model interpretation.
 
 ---
 
-## 3. Bright Data — fallback retrieval and search
 
-Optional. Used when Anakin fails on a page, and for SERP search if you have
-that zone.
-
-Zones matter: **Web Unlocker** (page retrieval) and **SERP** (search) are
-*separate products*. Having one does not give you the other, which is exactly
-what the capability probe checks.
-
-1. Sign up at <https://brightdata.com>
-2. Create a **Web Unlocker** zone, and optionally a **SERP** zone
-3. Copy the API key from the zone's Overview tab
-4. Set on Render:
-
-```
-BRIGHTDATA_API_KEY=your_key
-BRIGHTDATA_UNLOCKER_ZONE=your_unlocker_zone_name
-BRIGHTDATA_SERP_ZONE=your_serp_zone_name      # omit if you don't have one
-```
-
-**Verify:** Settings lists each zone by name and says whether it was found on
-your account. A zone name typo shows up here as "not found", with your actual
-active zones listed.
-
----
-
-## 4. Cognee — cross-case memory
+## 3. Cognee — cross-case memory
 
 Optional. Remembers preferences across cases ("we prefer recyclable packaging").
 Without it, preferences still work — they're stored locally — but don't carry
@@ -115,7 +90,7 @@ Only text you explicitly asked to remember is stored. No prices, no contacts.
 
 ---
 
-## 5. Email — sending quote requests
+## 4. Email — sending quote requests
 
 Off by default. Drafts can be downloaded as `.eml` or copied without any of
 this, and that's labelled as an **export**, never as a sent message.
@@ -165,7 +140,6 @@ and will not claim to.
 | --- | --- | --- | --- |
 | `ANAKIN_API_KEY` | Render | No | Keyless retrieval; catalogue-based discovery |
 | `DEEPSEEK_API_KEY` | Render | No | Rule-based extraction, labelled as such |
-| `BRIGHTDATA_*` | Render | No | No fallback provider |
 | `COGNEE_*` | Render | No | Local-only memory |
 | `EMAIL_PROVIDER` + sender | Render | No | `.eml` export only |
 | `APP_AUTH_PASSWORD` | **Both** | Yes, if public | Anyone can spend your credits |
@@ -181,6 +155,5 @@ and will not claim to.
 | Browser asks for the password twice | Render and Vercel passwords differ |
 | `search: unavailable` despite a key | Your plan lacks search — discovery falls back to the catalogue, which is a supported mode |
 | `chat_completions` 404 | `DEEPSEEK_MODEL` isn't available to your account |
-| Bright Data zone "not found" | Zone name typo — Settings lists your real zones |
 | Research starts but never progresses | The worker isn't running; check Render logs for `Worker … started` |
 | `unable to open database file` | `DATABASE_PATH` isn't on the mounted disk, or the mount is unwritable |

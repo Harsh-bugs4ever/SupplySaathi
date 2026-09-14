@@ -80,11 +80,42 @@ export function requireAuth(req: Request): NextResponse | null {
   return fail('Authentication required.', 401);
 }
 
+/**
+ * Refuse to serve the API from a deployment whose job is to forward it.
+ *
+ * The interface host builds these route files too — they are in the repo — and
+ * only the `beforeFiles` rewrite stops them being reached. If that rewrite were
+ * ever misconfigured, the UI host would happily run its own copies against a
+ * database that does not exist there, quietly creating an empty one. The user
+ * would see a working app with no cases and assume their data was lost.
+ *
+ * `API_ORIGIN` is set on exactly the deployments that must never serve the API,
+ * so it doubles as the guard. Failing loudly here is much kinder than a
+ * phantom backend.
+ */
+export function refuseIfProxyRole(): NextResponse | null {
+  const apiOrigin = (process.env.API_ORIGIN ?? '').trim();
+  if (!apiOrigin) return null;
+
+  log.error(
+    'An API route was reached on a deployment that should be forwarding to ' +
+      `${apiOrigin}. The rewrite in next.config.mjs is not taking effect.`,
+  );
+  return fail(
+    'This deployment serves the interface only and forwards the API elsewhere. ' +
+      'Reaching this message means the API rewrite is misconfigured.',
+    500,
+  );
+}
+
 /** Wrap a handler so an unexpected throw becomes a clean 500 with a log line. */
 export function handler(
   fn: (req: Request, ctx: any) => Promise<NextResponse>,
 ): (req: Request, ctx: any) => Promise<NextResponse> {
   return async (req, ctx) => {
+    const misrouted = refuseIfProxyRole();
+    if (misrouted) return misrouted;
+
     const origin = req.headers.get('origin');
     if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && origin && origin !== new URL(req.url).origin && origin !== new URL(config.baseUrl).origin) {
       return fail('Cross-origin requests are not allowed.', 403);

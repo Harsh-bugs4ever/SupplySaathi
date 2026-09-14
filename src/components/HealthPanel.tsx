@@ -73,8 +73,8 @@ export function HealthPanel() {
       healths: [health.reasoning],
     },
     {
-      title: 'Web research — Anakin, Bright Data',
-      note: 'Retrieves supplier pages and, where licensed, runs searches. Providers are tried in order.',
+      title: 'Web research — Anakin',
+      note: 'Retrieves supplier pages and, where licensed, runs searches. Page retrieval works without an API key; search needs one.',
       healths: health.web,
     },
     {

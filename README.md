@@ -53,7 +53,7 @@ You describe what you need in a sentence. It then:
 
 1. **Parses the brief** into checkable requirements, and resolves *"by Friday"* into an explicit date in your timezone — shown to you **before** research starts, because everything downstream depends on it.
 2. **Asks only questions that change the answer.** Zero questions is a good outcome.
-3. **Retrieves live supplier pages** via Anakin (Bright Data as fallback). A search-results page is recognised as a listing and followed to individual products, not mistaken for one.
+3. **Retrieves live supplier pages** via Anakin. A search-results page is recognised as a listing and followed to individual products, not mistaken for one.
 4. **Extracts facts with a supporting quote each.** A value with no excerpt behind it is recorded as unknown, not guessed.
 5. **Does arithmetic in code, never in the model** — pack conversion, minimum-order rounding, increments, subtotals.
 6. **Evaluates hard constraints**, keeping *failed* and *unknown* strictly apart.
@@ -96,7 +96,7 @@ Mode is chosen **per case**, in the composer.
 
 Every key is server-side only; nothing reaches the browser. `npm run doctor` and the Settings page probe each provider against its real endpoint, so "search unavailable" means the credentials genuinely don't grant search — not that a variable is missing.
 
-### Anakin — web research (primary)
+### Anakin — web research
 
 Verified against <https://anakin.io/docs/api-reference>:
 
@@ -110,15 +110,6 @@ Verified against <https://anakin.io/docs/api-reference>:
 | `ANAKIN_API_KEY` | ✅ higher limits | live search |
 
 Both are supported paths. The split is probed at runtime.
-
-### Bright Data — web research (fallback)
-
-Verified against <https://docs.brightdata.com>:
-
-- `POST https://api.brightdata.com/request` — `{ zone, url, format: "raw" }`
-- SERP as JSON via `&brd_json=json`; header `Authorization: Bearer <key>`
-
-Zones are probed via `/zone/get_active_zones`: a Web Unlocker zone and a SERP zone are different products, and having one doesn't give you the other.
 
 ### DeepSeek — reasoning
 
@@ -248,7 +239,7 @@ Also: `npm run typecheck` clean, production build clean, `npm audit` 0 vulnerabi
 
 Live testing found two real bugs, both fixed: a search-results page treated as a single product (splicing one listing's price onto another's pack size), and a fallback provider's "not configured" error masking the primary's actual rate limit.
 
-**Not verified live:** DeepSeek completions, Anakin search, Bright Data zones, Cognee, real email delivery, and the Docker image itself. Their adapters are complete and unit-tested against documented contracts; `npm run doctor` confirms them once keys are present. Fixture-based verification is never described as live verification anywhere in this project.
+**Not verified live:** DeepSeek completions, Anakin search, Cognee, and real email delivery. Their adapters are complete and unit-tested against documented contracts; `npm run doctor` confirms them once keys are present. The Docker image *was* built and run — see [DEPLOYMENT.md](./DEPLOYMENT.md). Fixture-based verification is never described as live verification anywhere in this project.
 
 ---
 

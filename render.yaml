@@ -71,12 +71,6 @@ services:
         sync: false
       - key: DEEPSEEK_API_KEY
         sync: false
-      - key: BRIGHTDATA_API_KEY
-        sync: false
-      - key: BRIGHTDATA_UNLOCKER_ZONE
-        sync: false
-      - key: BRIGHTDATA_SERP_ZONE
-        sync: false
       - key: COGNEE_API_KEY
         sync: false
       - key: COGNEE_BASE_URL

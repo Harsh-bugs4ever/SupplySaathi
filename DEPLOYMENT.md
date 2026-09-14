@@ -106,7 +106,7 @@ the build settings alone.
 | `APP_AUTH_ENABLED` | `true` |
 | `APP_AUTH_PASSWORD` | **the same password as Render** |
 
-**No provider keys here.** Anakin, DeepSeek, Bright Data and Cognee keys belong
+**No provider keys here.** Anakin, DeepSeek and Cognee keys belong
 only on Render. Vercel never calls those services.
 
 The password must match because both hosts gate independently: the browser
