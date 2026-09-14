@@ -1,281 +1,271 @@
 # SupplySaathi
 
-**Your supplier fell through. Your business shouldn't.**
+**Find replacement suppliers. Compare the evidence. Request quotes with confidence.**
 
-A sourcing agent that reads live supplier pages, rejects what doesn't fit, shows the tradeoffs with evidence, and prepares quote requests for your approval.
+SupplySaathi is an AI-assisted sourcing application for small businesses facing supplier stockouts. Describe what you need, and it researches supplier pages, checks requirements, compares costs, and prepares quote requests for your approval.
 
-Built for the [Anakin Forge hackathon](https://anakin.io/hackathon/anakin-forge).
+The current implementation focuses on bakery packaging in India.
 
-> **Deploying:** **[DEPLOYMENT.md](./DEPLOYMENT.md)** — interface on Vercel, API + worker on Render.
-> **Provider keys:** **[PROVIDERS.md](./PROVIDERS.md)** — where to get each one and how to verify it.
+[Frontend](https://supplysaathi.vercel.app/) · [Deployment guide](./DEPLOYMENT.md) · [Provider setup](./PROVIDERS.md)
 
----
+## What it does
 
-## Quick start
+Imagine a bakery needs **500 cake boxes, 10 × 10 × 5 inches, by Friday** because its regular supplier cancelled.
 
-Requires **Node 22.5+** (24 recommended). No native build step, no database server.
+SupplySaathi helps the owner:
 
-```bash
-npm install
-npm run migrate
-npm run dev          # app + worker, http://localhost:3000
+1. Turn the request into structured requirements: quantity, dimensions, budget, and deadline.
+2. Review the interpreted requirements and answer relevant clarification questions.
+3. Research alternative supplier pages and collect supporting excerpts.
+4. Compare pack sizes, minimum orders, known costs, and requirement matches.
+5. Review ranked candidates and see what is confirmed, missing, or incompatible.
+6. Select suppliers and prepare tailored requests for quotation (RFQs).
+7. Edit and approve each draft before sending through a configured email provider, or export it as an `.eml` file.
+
+It supports sourcing decisions; it does not place purchase orders or guarantee supplier availability, certification, or delivery.
+
+## System flow
+
+```mermaid
+flowchart TD
+    A[Describe the sourcing need] --> B[Parse and review requirements]
+    B --> C[Start research]
+    C --> D[Save research job in SQLite]
+    D --> E[Background worker picks up the job]
+    E --> F[Recall business preferences]
+    F --> G[Discover and retrieve supplier pages]
+    G --> H[Extract facts with supporting evidence]
+    H --> I[Calculate costs and evaluate constraints]
+    I --> J[Rank candidates and identify open questions]
+    J --> K[Compare results and select suppliers]
+    K --> L[Prepare quote requests]
+    L --> M[User edits and approves each draft]
+    M --> N[Send through email provider or export EML]
 ```
 
-Then, in the composer:
+During research, the worker saves progress events and results to SQLite. The browser receives timeline updates through **Server-Sent Events (SSE)**, so the user can follow the work without repeatedly refreshing the page.
 
-1. Pick **Try demo** (sample data) or **Live research** (real supplier pages)
-2. Click **Try: 500 cake boxes** to fill the example brief
-3. **Create demo case** / **Create live sourcing case**
-4. **Start research**, watch the timeline, open **Evidence** on any card
+### How a supplier is evaluated
 
-Live research works with **no credentials at all** — Anakin's keyless tier handles page retrieval, and discovery falls back to a curated supplier catalogue. Keys unlock broader search and better extraction.
+| Result | Meaning | Example |
+| --- | --- | --- |
+| Match | The available evidence satisfies the requirement | Listed dimensions match the requested box |
+| Failed | The evidence conflicts with the requirement | Minimum order is 5,000 when the request allows only 500 |
+| Unknown | The page does not provide enough information | Delivery time is not published |
 
-| Command | Does |
-|---|---|
-| `npm run dev` | App + worker, with reload |
-| `npm run build && npm start` | Production: migrate, then app + worker |
-| `npm run doctor` | Probe every provider, print what's actually available |
-| `npm run seed` | Create a demo case ready to research |
-| `npm test` | 180 tests |
-| `npm run typecheck` | `tsc --noEmit` |
+Unknown information stays visible and becomes a question for the supplier. Missing shipping costs are not treated as zero, and a supplier's safety claim is not treated as independent certification.
 
----
-
-## The problem
-
-A small bakery depends on two or three suppliers. When one cancels on a Tuesday, the owner stops baking and starts searching: find alternatives, decode inconsistent listings, work out whether "pack of 25" at ₹380 beats "pack of 50" at ₹720, check whether a box labelled *10 × 10 × 5* means the inside or the outside, find out if anyone delivers by Friday — then write the same email six times.
-
-Hours of work that produce no cakes.
-
-## What the agent does
-
-You describe what you need in a sentence. It then:
-
-1. **Parses the brief** into checkable requirements, and resolves *"by Friday"* into an explicit date in your timezone — shown to you **before** research starts, because everything downstream depends on it.
-2. **Asks only questions that change the answer.** Zero questions is a good outcome.
-3. **Retrieves live supplier pages** via Anakin. A search-results page is recognised as a listing and followed to individual products, not mistaken for one.
-4. **Extracts facts with a supporting quote each.** A value with no excerpt behind it is recorded as unknown, not guessed.
-5. **Does arithmetic in code, never in the model** — pack conversion, minimum-order rounding, increments, subtotals.
-6. **Evaluates hard constraints**, keeping *failed* and *unknown* strictly apart.
-7. **Ranks transparently**, explaining each placement in a sentence. No confidence percentages.
-8. **Drafts a quote request** per supplier, built around that supplier's own open questions.
-9. **Sends only what you explicitly approved** — editing a draft afterwards revokes the approval automatically.
-
-### The distinction the product rests on
-
-> A page that doesn't mention food-contact safety hasn't told you the product is unsafe. It hasn't told you it's safe either.
-
-That third answer — *unknown* — becomes a question for the supplier. Most tools collapse it into a pass or fail. SupplySaathi keeps it separate in the data model, the ranking, the chip colour, and the glyph on that chip (so it survives greyscale and colour-blindness).
-
-In practice the agent will tell you:
-
-- this listing **matches** your dimensions
-- this cheaper one is **4 × 4 × 1.5 in** — excluded, it's a different product
-- this one's **minimum order is 5,000 units** when you need 500 — excluded
-- this one **might** work, but **nobody said when it ships** — ask them
-- this says *"food safe"* but **names no standard** — a supplier's claim, not a certificate
-- this page **couldn't be read** — which tells you nothing about the product
-
-Nothing is invented in live mode. Not a listing, price, certification, shipping date, or contact address.
-
----
-
-## Modes
-
-Mode is chosen **per case**, in the composer.
-
-**Demo** runs on deterministic fixtures with no network access. Demo cases are labelled in the composer, with a badge in the case list, and with a banner inside the case itself. The fixtures deliberately exercise each decision: a clean match, a pack-size conversion, a minimum-order failure, missing delivery evidence, a dimensions conflict, and a retrieval failure.
-
-**Live** uses configured providers and real pages. Missing integrations produce honest errors, never fixtures.
-
-`APP_MODE` sets the composer's default. **The two never mix** — the provider is chosen at construction, so there's no code path from a failed live call to sample data. Silently substituting fixtures for live data would be the most damaging thing this tool could do.
-
----
-
-## Providers
-
-Every key is server-side only; nothing reaches the browser. `npm run doctor` and the Settings page probe each provider against its real endpoint, so "search unavailable" means the credentials genuinely don't grant search — not that a variable is missing.
-
-### Anakin — web research
-
-Verified against <https://anakin.io/docs/api-reference>:
-
-- `POST https://api.anakin.io/v1/url-scraper/scrape` — `{ url, country, useBrowser, generateJson }`
-- `POST https://api.anakin.io/v1/search` — `{ prompt, limit }`
-- Header: `X-API-Key`
-
-| Credential | Retrieval | Discovery |
-|---|---|---|
-| No key | ✅ keyless tier | curated catalogue + your own URLs |
-| `ANAKIN_API_KEY` | ✅ higher limits | live search |
-
-Both are supported paths. The split is probed at runtime.
-
-### DeepSeek — reasoning
-
-Verified against <https://api-docs.deepseek.com>. OpenAI-compatible `/chat/completions`; models `deepseek-flash` and `deepseek-v4-pro`; `response_format: { type: "json_object" }`. Model and base URL are configurable because that list changes.
-
-Every response is Zod-validated before it's trusted. A violation triggers **one** repair attempt showing the model its own output and the specific error, then falls back to a deterministic rule-based extractor. An auth or model-name failure disables the model for the rest of the run rather than paying the timeout on every call.
-
-### Cognee — memory
-
-Verified against <https://docs.cognee.ai/api-reference>: `/api/v1/{add,cognify,search}`, header `X-Api-Key`.
-
-Cognee holds **contextual** memory only — preferences, past supplier experience, rejection reasons. Case state, quantities, deadlines, approvals and send records live in SQLite and nowhere else. If Cognee is down, the case works and the UI says memory is unavailable.
-
-### Email
-
-`EMAIL_PROVIDER` is `none` (default — `.eml` export, labelled as an export, never as a sent message), `smtp`, `resend` (sends an `Idempotency-Key` so a retried request can't double-send), or `test` (records locally, sends nothing).
-
-`EMAIL_ALLOWLIST` restricts outgoing mail to named addresses; a badge appears in the UI and other recipients are refused.
-
----
+Cost calculations run in ordinary TypeScript code. For example, **500 boxes ÷ 50 boxes per pack = 10 packs**. The application also accounts for minimum orders and order increments when that information is available.
 
 ## Architecture
 
-```
-Browser ──► Next.js app ──► SQLite ◄── Worker process
-              (routes)      (WAL)       (agent runs)
-                  │                          │
-                  └──── SSE ◄── events ──────┘
-```
+The repository contains one Next.js application and a separate Node.js research worker.
 
-Locally that is one process pair. **Deployed, it splits across two hosts**: the interface on Vercel, the API and worker together on Render beside the SQLite file. One codebase builds both — the `API_ORIGIN` environment variable decides the role, and when set, every `/api/*` request is rewritten to the API host *before* Next's own routes match. See [DEPLOYMENT.md](./DEPLOYMENT.md).
-
-The API and worker cannot be separated: they share a SQLite file, and a Render disk is reachable by exactly one service.
-
-**Why a separate worker.** A run takes minutes and the owner will close the tab. Job state is persisted, so a run survives a refresh, a restart, or the worker being killed — anything left `running` at startup is requeued.
-
-**Why SSE reads from the database** rather than being pushed: the processes share no state, and a reconnecting client resumes from its last sequence number without losing or duplicating an entry. On completion the client refetches the authoritative snapshot.
-
-```
-src/lib/domain/      pure logic: costing, constraints, ranking, units, dates
-src/lib/providers/   adapters: reasoning, web, memory, email — one port each
-src/lib/agent/       runner, brief normalisation, prompts, outreach, listing detection
-src/lib/db/          schema, typed repository, SQLite adapter
-src/lib/security/    URL guard, page sanitisation, auth, log redaction
-src/lib/client/      browser API client — resolves where /api lives
-src/middleware.ts    password gate for deployed instances
-worker/              the job loop
-migrations/          plain SQL, applied in order, one transaction each
-Dockerfile           API host image; entrypoint fixes disk ownership, drops root
-next.config.mjs      the API_ORIGIN rewrite that makes the split work
+```mermaid
+flowchart LR
+    U[Browser] --> UI[Next.js frontend on Vercel]
+    UI -->|API requests via rewrite| API[Next.js API on backend host]
+    API <--> DB[(SQLite on persistent disk)]
+    W[Node.js research worker] <--> DB
+    W --> A[Anakin: supplier pages]
+    W --> D[DeepSeek: structured extraction]
+    W --> C[Cognee: optional contextual memory]
+    API --> E[Email provider: approved sends]
+    DB --> S[SSE API: progress events]
+    S --> U
 ```
 
-Provider code never leaks into domain logic. Demo mode satisfies the same interfaces, which is why it exercises the real costing, constraint and ranking code — only retrieval is substituted.
+- **Frontend:** displays the sourcing form, cases, evidence, comparisons, drafts, and settings.
+- **API:** validates requests and manages cases, research jobs, preferences, approvals, and sends.
+- **Worker:** polls the database for queued research jobs and performs the longer research workflow outside a web request.
+- **SQLite:** stores the authoritative case data, requirements, evidence, results, jobs, events, and approval records.
+- **SSE:** streams saved progress events to the browser. Reconnecting clients can resume from their last event sequence.
 
-**Why no ORM.** `better-sqlite3` has no prebuilt binary for Node 24 on Windows, so `npm install` fails without a full MSVC toolchain. SupplySaathi uses Node's built-in `node:sqlite` behind a thin adapter (`src/lib/db/sqlite.ts`) restoring named parameters, value coercion and transactions. The repository is hand-written so JSON value-object columns decode at exactly one place, and a schema change is a TypeScript error rather than a runtime `undefined`.
+Closing the browser does not stop the worker. On startup, the worker requeues jobs left running by an interrupted process. This recovery model assumes a single worker instance.
 
-### Four kinds of information
+## Technologies and their roles
 
-| Kind | Example | Where |
-|---|---|---|
-| **Retrieved** | "Pack size 50", with its quote | `Evidence`, `explicitly_stated` |
-| **Derived** | 10 packs × 50 = 500 units | `Costing`, `derived` / `computed` |
-| **Interpreted** | how a model read an ambiguous phrase | `Evidence.interpretation` |
-| **Confirmed** | what you typed | authority `user_provided` |
+| Technology | What it does in this project |
+| --- | --- |
+| **Next.js 15** | Provides page routing, server rendering, API route handlers, and the frontend-to-backend API rewrite |
+| **React 19** | Builds interactive forms, supplier cards, comparison views, and the research workspace |
+| **TypeScript** | Defines shared data types and implements the research workflow, calculations, and business rules |
+| **Tailwind CSS 4** | Styles the interface and responsive layouts |
+| **Node.js** | Runs the web server, scripts, and separate background worker |
+| **SQLite via `node:sqlite`** | Persists application data in a local database file without a separate database server |
+| **Zod** | Validates structured data, including model responses, before application code uses it |
+| **Anakin adapter** | Searches for supplier pages and retrieves their content, depending on available provider capabilities |
+| **DeepSeek adapter** | Helps plan searches and extract structured facts from supplier text; rule-based processing provides a fallback |
+| **Cognee adapter** | Adds optional contextual recall of preferences and supplier notes alongside local memory |
+| **Nodemailer / Resend** | Supports sending user-approved quote requests through SMTP or Resend |
+| **Vitest** | Tests business rules, authentication, research behavior, and outreach safeguards |
+| **Docker** | Packages the API and worker for a backend host with a persistent disk |
 
-Supplier claims stay distinguishable from independent verification throughout.
+The AI interprets text. The application code calculates costs, evaluates constraints, manages state, and enforces approval rules. SQLite remains the source of truth even when external AI or memory services are unavailable.
 
----
+## Demo and live modes
 
-## Design
+| Mode | Data and behavior |
+| --- | --- |
+| **Demo** | Uses sample supplier fixtures and deterministic reasoning to demonstrate research and comparison without live supplier research |
+| **Live** | Uses real supplier pages and available provider integrations; failed retrievals remain failures rather than becoming sample results |
 
-A dark sourcing command centre: near-black ground, lime-green accent, monospaced figures wherever numbers are compared down a column, and an animated network diagram of the sourcing process on the landing screen.
+Mode is selected per case. `APP_MODE` controls the default shown in the interface.
 
-Constraint state is carried by **both** colour and glyph (✓ / ? / ✕). Motion only marks arriving results, and `prefers-reduced-motion` is honoured. The mascot is a cartoon ghost carrying a parcel — your supplier vanished, so a friendly ghost fetches the box. *Saathi* means companion.
+DeepSeek is optional: without its key, the application uses rule-based reasoning. Anakin discovery can fall back to a curated catalogue and supplied URLs; actual retrieval still depends on the provider being available. Use the Settings page or `npm run doctor` to check configured capabilities.
 
----
+For a demonstration without outgoing email, keep `EMAIL_PROVIDER=none`.
 
-## Safety
+## Run locally
 
-Retrieved pages are **untrusted data**:
+**Requirements:** Node.js **22.5 or newer** and npm. The minimum Node version is needed for the built-in SQLite API.
 
-- Content is never concatenated into a system prompt. It's fenced between explicit markers, framed as a document to analyse, and the markers are stripped from the content so a page can't close the fence early.
-- Common override phrasings are neutralised and flagged in the timeline.
-- Extraction has no tools and can only return schema-checked JSON, so an injected instruction has nowhere to act.
-
-Also, each with tests:
-
-- URLs resolving to localhost, private ranges, link-local, carrier NAT and cloud metadata are blocked, as are non-HTTP schemes and URLs carrying credentials. Redirect chains are re-validated per hop.
-- Recipient addresses are **never guessed** — sourced from a page actually read (URL recorded), or typed by you.
-- An approval pins the exact version, recipient and SHA-256 content hash. Editing any of them revokes it in the same transaction.
-- Sends are idempotent: the key derives from the approval and its content, so a double-click, retry or worker restart collapse into one email.
-- An ambiguous send result is recorded as `unknown` and **never retried automatically**.
-- Provider acceptance is never called delivery.
-- Secrets stay in environment variables and are redacted from logs.
-- `APP_AUTH_ENABLED=true` puts HTTP Basic auth in front of a deployed instance via `src/middleware.ts`.
-
----
-
-## Verification
+### 1. Install dependencies
 
 ```bash
-npm test        # 180 tests, 11 files
+npm install
 ```
 
-| File | Covers |
-|---|---|
-| `costing` | pack rounding, MOQ, increments, missing shipping ≠ zero, refusal to calculate |
-| `constraints` | unknown vs failed, internal/external dimensions, claim vs named standard, currency mismatch |
-| `dates` | weekday resolution, timezones, ambiguity flagging, returning null over guessing |
-| `security` | SSRF blocking, prompt injection, redirect chains, log redaction, content bounds |
-| `auth` | credential checking for the middleware gate |
-| `outreach` | approval invalidation, duplicate sends, concurrent race, allowlist, uncertain outcomes |
-| `resilience` | invalid model output, model fallback, partial retrieval, memory outage, cancellation, job recovery |
-| `listing` | listing vs product pages, link harvesting, tracking-param stripping, name cleanup |
-| `live-health` | a provider error inside an HTTP 200 can't report as healthy |
-| `research-route` | run-start guards |
-| `e2e` | create → research → evidence → select → edit → approve → send → reload and verify persistence |
+### 2. Create the local environment file
 
-Also: `npm run typecheck` clean, production build clean, `npm audit` 0 vulnerabilities.
+Copy `.env.example` to `.env.local` if you do not already have one.
 
-### Verified live
+PowerShell:
 
-- **Anakin page retrieval (keyless)** — real HTTP, ~2.6s typical
-- **A full live run** — followed a Flipkart listing to 6 real product pages, extracted real supplier names, pack sizes, prices and dimensions, computed subtotals, and **correctly excluded** all three whose boxes were 4 × 4 × 1.5 in and 8 × 8 × 5 in against a required 10 × 10 × 5 in
-- **Capability probing** — Anakin scrape works keyless; search returns 401 without a key
-- **Full HTTP flow** against the running server, including all five approval/send guards
+```powershell
+Copy-Item .env.example .env.local
+```
 
-Live testing found two real bugs, both fixed: a search-results page treated as a single product (splicing one listing's price onto another's pack size), and a fallback provider's "not configured" error masking the primary's actual rate limit.
+macOS / Linux:
 
-**Not verified live:** DeepSeek completions, Anakin search, Cognee, and real email delivery. Their adapters are complete and unit-tested against documented contracts; `npm run doctor` confirms them once keys are present. The Docker image *was* built and run — see [DEPLOYMENT.md](./DEPLOYMENT.md). Fixture-based verification is never described as live verification anywhere in this project.
+```bash
+cp .env.example .env.local
+```
 
----
+Start with these values:
 
-## Known limitations
+```dotenv
+APP_MODE=demo
+DATABASE_PATH=./data/supplysaathi.db
+APP_TIMEZONE=Asia/Kolkata
+APP_BASE_URL=http://localhost:3000
+APP_AUTH_ENABLED=false
+EMAIL_PROVIDER=none
+```
 
-- **One category** — bakery packaging, India. The constraint logic generalises; the catalogue and some extraction heuristics don't.
-- **Extraction tracks the model.** Without `DEEPSEEK_API_KEY` the rule-based extractor handles tidy pages well and messy ones poorly. It's labelled as rule-based, not passed off as model work.
-- **DNS rebinding isn't closed.** URLs are validated, but a hostname *resolving* to a private address would still be fetched. Closing it needs socket pinning, impossible through a third-party scraper. In practice the fetch happens on the provider's infrastructure, not ours.
-- **No currency conversion.** Cross-currency candidates are marked unknown rather than converted — an unreferenced FX rate is a fabricated number.
-- **No delivery confirmation.** We observe that a provider accepted a message, never that it arrived.
-- **The catalogue goes stale.** Entries were live-checked on 2026-09-13. A dead entry surfaces as a retrieval failure, never as a claim about availability.
-- **Single business workspace.** One shared password, not user accounts. One replica only — job recovery assumes a single worker.
-- **Lead time is an estimate.** "Ships in 2–3 days" is the supplier's published figure, not a commitment, and the UI says so.
+### 3. Initialize the database and start the application
 
----
+```bash
+npm run migrate
+npm run dev
+```
 
-## Two-minute demo script
+Open [localhost:3000](http://localhost:3000). Choose the demo option, enter a sourcing request, create the case, and start research.
 
-Run `npm run dev`, open <http://localhost:3000>.
+`npm run dev` starts **both the web app and the worker**. Running only `npm run dev:web` does not process research jobs.
 
-> **0:00** — "A bakery's supplier just cancelled 500 cake boxes, needed by Friday. Normally that's an afternoon of tab-juggling."
->
-> **0:15** — Click **Try: 500 cake boxes**, then create the case. "One sentence in. Notice what comes back first — *Friday* is now **Friday, 18 September 2026**, in their timezone, shown before we spend a single request. Everything depends on that date, so they get to catch it."
->
-> **0:35** — **Start research.** "Every line is a real action that just finished. No fake progress bars."
->
-> **0:55** — Point at the excluded BulkBox card. "It found a cheaper carton and threw it out: minimum order 5,000 when they need 500. It tells you *why*, in numbers you can check."
->
-> **1:10** — Open **Evidence**. "Every fact has the URL, the exact quote, the retrieval time, and how we read it. This one says 'food safe' but names no standard — logged as a supplier claim, not a certification, so the card stays amber."
->
-> **1:30** — Comparison table. "Pack of 25 versus pack of 50, normalised. Amber cells are *unknown*, not zero. No landed total, because nobody published shipping — so we don't invent one. The headline is qualified: 'lowest known merchandise cost among candidates matching the documented dimensions', not 'best supplier'."
->
-> **1:45** — Select two → **Prepare quote requests** → open one. "A real email built around *this* supplier's open questions. Edit the body and watch the approval revoke itself. Approve, and only then can it send."
->
-> **2:00** — "Reload: the evidence, the decisions, the send record are all still here. Next case, it remembers they prefer recycled board. The agent read the live web, reasoned through the tradeoffs, and stopped to ask permission before touching anyone's inbox."
+## Configuration
 
----
+See [.env.example](./.env.example) for all available variables and [PROVIDERS.md](./PROVIDERS.md) for integration setup. Keep credentials in server-side environment variables; do not commit `.env.local`.
 
-Next.js · TypeScript · Tailwind · Node built-in SQLite. Web data by [Anakin](https://anakin.io).
+| Variable | Purpose |
+| --- | --- |
+| `APP_MODE` | Default case mode: `demo` or `live` |
+| `DATABASE_PATH` | SQLite file location; use persistent storage on the backend |
+| `APP_TIMEZONE` | Timezone used when interpreting dates |
+| `APP_BASE_URL` | Public application URL, also used by backend request-origin checks |
+| `API_ORIGIN` | Backend origin for the frontend's `/api/*` rewrite; leave unset on the backend |
+| `APP_AUTH_ENABLED` | Enables the application's shared password gate when `true` |
+| `APP_AUTH_PASSWORD` | Password used by the gate when enabled |
+| `ANAKIN_API_KEY` | Credentials for supported web research capabilities |
+| `DEEPSEEK_API_KEY` | Enables model-assisted reasoning in live mode |
+| `DEEPSEEK_MODEL` | Configurable model identifier for the DeepSeek adapter |
+| `COGNEE_API_KEY`, `COGNEE_BASE_URL` | Optional remote contextual memory |
+| `EMAIL_PROVIDER` | `none`, `smtp`, `resend`, or `test` |
+| `EMAIL_ALLOWLIST` | Optional restriction on outgoing recipients |
+| `AGENT_MAX_PAGES`, `AGENT_MAX_ROUNDS`, `AGENT_TIME_BUDGET_MS` | Bounds on research work |
+
+## Deployment
+
+The deployment setup included in this repository is:
+
+| Component | Host | Configuration |
+| --- | --- | --- |
+| Frontend | Vercel | Set `API_ORIGIN` to the backend URL |
+| API and worker | Render Docker service | Leave `API_ORIGIN` unset; run both processes together |
+| Database | Persistent disk attached to the backend | Set `DATABASE_PATH` to the mounted file path |
+
+The frontend forwards `/api/*` requests to the backend through `next.config.mjs`. Provider keys belong on the backend. Set the backend's `APP_BASE_URL` to the public frontend URL.
+
+**The current backend is designed for a persistent server process and shared SQLite disk.** Deploying another copy of the project as a serverless frontend does not replace that runtime: the API and worker must share durable storage, and the worker must keep running. Moving this architecture to a serverless backend requires changes to database storage and job execution.
+
+Follow [DEPLOYMENT.md](./DEPLOYMENT.md) for the full setup.
+
+### Password prompt
+
+The deployment guide describes a password-protected setup. For public access without the application's password prompt, set `APP_AUTH_ENABLED=false` on **both** frontend and backend deployments, then redeploy both. This opens access to the shared workspace; the project does not have individual user accounts.
+
+A Vercel-branded login page is a separate hosting-level protection setting, not the application's password gate.
+
+## Available commands
+
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Start the web app and worker with automatic reload |
+| `npm run dev:web` | Start only the Next.js development server |
+| `npm run worker` | Start the worker with automatic reload |
+| `npm run build` | Build the Next.js application |
+| `npm start` | Apply migrations and start the production web app and worker |
+| `npm run migrate` | Apply database migrations |
+| `npm run seed` | Add sample data for local demonstrations |
+| `npm run doctor` | Probe provider availability; may contact external services |
+| `npm test` | Run the Vitest test suite |
+| `npm run typecheck` | Check TypeScript types |
+
+## Project structure
+
+```text
+src/
+  app/                  Pages and API route handlers
+  components/           Forms, supplier cards, and workspace views
+  lib/
+    agent/              Research orchestration, briefs, and outreach
+    domain/             Costing, constraints, ranking, units, and dates
+    providers/          Web, reasoning, memory, and email adapters
+    db/                 SQLite connection and data access
+    security/           Authentication, URL checks, sanitization, redaction
+    config/             Server configuration and environment loading
+    client/             Browser API helpers
+    fixtures/           Sample supplier pages for demo research
+  middleware.ts         Optional application password gate
+worker/                 Background research job loop
+migrations/             SQL database migrations
+scripts/                Migration, seed, and provider-check utilities
+tests/                  Automated tests
+Dockerfile              Backend container image
+render.yaml             Backend service and disk configuration
+next.config.mjs         Frontend-to-backend API routing
+```
+
+## Reliability and limitations
+
+- Extracted facts carry supporting evidence where available; incomplete information remains visible as unknown.
+- Editing an approved draft revokes its approval. Sending requires approval of the current content and recipient.
+- Send records and idempotency checks help prevent duplicate submissions. An uncertain send outcome is not automatically retried.
+- Email provider acceptance is recorded separately from confirmed delivery.
+- External model output is schema-validated, with a rule-based fallback for reasoning failures.
+- Research has page, round, and time budgets and can return partial results.
+- The current catalogue and extraction heuristics focus on bakery packaging in India.
+- This is a single shared business workspace with a single-worker recovery model, not a multi-tenant application.
+- Published prices and lead times can change; missing shipping, tax, or delivery information must be confirmed with the supplier.
+- Live integration availability depends on provider credentials, permissions, quotas, and service status. Demo results do not verify live integrations.
+
+## Development checks
+
+```bash
+npm run typecheck
+npm test
+npm run build
+```
+
+The test suite covers costing, constraint evaluation, date handling, authentication, URL and content handling, research recovery, listing extraction, provider health, and approval/send behavior. Run the commands above to verify your checkout; external provider availability is checked separately with `npm run doctor`.
